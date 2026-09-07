@@ -1,5 +1,3 @@
-﻿using System;
-using System.Configuration;
 using System.Data.Entity;
 using LegacyDatabaseMigrationPOC.Models;
 
@@ -7,8 +5,16 @@ namespace LegacyDatabaseMigrationPOC.Data
 {
     public class AppDbContext : DbContext
     {
+        /// <summary>
+        /// Value stored in __MigrationHistory.ContextKey. Both provider-specific migration
+        /// configurations use this key, so databases migrated before the configurations were
+        /// split into Migrations\SqlServer and Migrations\PostgreSql keep working.
+        /// </summary>
+        public const string MigrationsContextKey = "LegacyDatabaseMigrationPOC.Migrations.Configuration";
+
+        /// <summary>Uses the provider selected by appSettings "DatabaseProvider".</summary>
         public AppDbContext()
-            : base(GetConnectionStringName())
+            : base(DatabaseProviderSettings.GetCurrentConnectionStringName())
         {
         }
 
@@ -17,16 +23,9 @@ namespace LegacyDatabaseMigrationPOC.Data
         {
         }
 
-        private static string GetConnectionStringName()
+        public AppDbContext(DatabaseProvider provider)
+            : this(DatabaseProviderSettings.GetConnectionStringName(provider))
         {
-            var provider = ConfigurationManager.AppSettings["DatabaseProvider"];
-
-            if (string.Equals(provider, "PostgreSql", StringComparison.OrdinalIgnoreCase))
-            {
-                return "PostgresConnection";
-            }
-
-            return "SqlServerConnection";
         }
 
         public DbSet<Customer> Customers { get; set; }
