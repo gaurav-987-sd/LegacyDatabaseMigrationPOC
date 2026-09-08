@@ -242,6 +242,7 @@
     <Folder Include="App_Data\" />
     <None Include="README.md" />
     <None Include="Database\README.md" />
+    <None Include="Database\set-local-env.example.ps1" />
     <None Include="Database\Setup-Database.ps1" />
     <None Include="Database\Scripts\PostgreSql\Migrations.sql" />
     <None Include="Database\Scripts\PostgreSql\SeedData.sql" />

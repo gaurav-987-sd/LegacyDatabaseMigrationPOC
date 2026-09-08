@@ -103,27 +103,74 @@ Rules:
   `Database\Setup-Database.ps1`. The application and the migration tooling can never end up pointing
   at different databases.
 
-Set them for one PowerShell session (they are inherited by anything you start from it, including
-`Setup-Database.ps1` and IIS Express):
+#### Where to set them
+
+A process reads its environment when it starts, so in every case below the thing that hosts the
+application has to be restarted before it notices a change.
+
+| Where you run it                                                                 | Set them here                                                                                           | Applies after                                                                                                                      |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| A PowerShell session (`Setup-Database.ps1`, IIS Express started from that shell) | `$env:PostgresConnection = '...'`                                                                       | Immediately, for that shell and anything it starts.                                                                                |
+| Visual Studio, pressing F5                                                       | Your Windows user account: `[Environment]::SetEnvironmentVariable('PostgresConnection', '...', 'User')` | Restarting Visual Studio. F5 launches IIS Express from `devenv.exe`, so it inherits Visual Studio's environment, not your shell's. |
+| Full IIS                                                                         | **IIS Manager > Application Pools > your pool > Advanced Settings > Environment Variables**             | Recycling the pool. On IIS versions without that setting, use a machine-wide variable and `iisreset`.                              |
+| Azure App Service                                                                | **Configuration > Application settings** (not the Connection strings blade, which renames the variable) | Saving, which restarts the app.                                                                                                    |
+| Docker                                                                           | `-e PostgresConnection=...`, or `environment:` in compose                                               | Recreating the container.                                                                                                          |
+| CI / build agents                                                                | The pipeline's secret variables                                                                         | The next run.                                                                                                                      |
+
+#### A starting point for local development
+
+[`Database\set-local-env.example.ps1`](Database/set-local-env.example.ps1) sets all four variables in
+one go. Copy it to `Database\set-local-env.ps1` (that name is gitignored, so your credentials stay
+out of the repository), edit the values, then dot-source it — the leading dot matters, it is what
+applies the values to your current shell:
 
 ```powershell
-$env:PostgresConnection = 'Host=db.example.com;Port=5432;Database=LegacyPoc;Username=appuser;Password=SecretHere'
-$env:DatabaseProvider   = 'PostgreSql'
+Copy-Item Database\set-local-env.example.ps1 Database\set-local-env.ps1
+# edit the copy, then:
+. .\Database\set-local-env.ps1            # this shell only
+. .\Database\set-local-env.ps1 -Persist   # also your user account, for Visual Studio
+. .\Database\set-local-env.ps1 -Clear     # remove them again
 ```
 
-Set them permanently for your user account (reopen the terminal afterwards):
+#### Confirming what was used
 
-```powershell
-[Environment]::SetEnvironmentVariable('PostgresConnection', 'Host=...;Password=SecretHere', 'User')
-```
+Open `/DatabaseTest/Current` or `/DatabaseTest/Status`: each provider is reported as coming from
+`Web.config` or from an `environment variable`. The connection string itself is never displayed,
+because it normally contains a password.
 
-For a site under full IIS, add them per application pool: **IIS Manager > Application Pools >
-your pool > Advanced Settings > Environment Variables**, then recycle the pool. A machine-wide
-variable also works, but IIS must be restarted to pick it up.
+### 3.4 Azure Key Vault and other secret stores
 
-To confirm which source is in use, open `/DatabaseTest/Current` or `/DatabaseTest/Status`: each
-provider is reported as coming from `Web.config` or from an `environment variable`. The connection
-string itself is never displayed, because it normally contains a password.
+Nothing in the application talks to a secret store directly, and for the common Azure case nothing
+needs to.
+
+**Azure App Service — no code changes.** Give the App Service a managed identity, grant it the
+**Key Vault Secrets User** role on your vault, then add an Application setting whose *value* is a
+Key Vault reference:
+
+| Name                 | Value                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------- |
+| `PostgresConnection` | `@Microsoft.KeyVault(SecretUri=https://<your-vault>.vault.azure.net/secrets/PostgresConnection/)` |
+
+App Service resolves the reference at startup and hands the application a normal environment
+variable, which is exactly what section 3.3 already reads. Put it under **Application settings**,
+not the **Connection strings** blade: that blade renames the variable with a type prefix such as
+`POSTGRESQLCONNSTR_`, which will not match. (A Connection strings entry does still work by a
+different route — it overrides `<connectionStrings>` in `Web.config`, which is the fallback the
+application uses when no environment variable is set.)
+
+The same pattern works for anything that injects secrets as environment variables: Kubernetes
+secrets, Docker secrets exposed as variables, HashiCorp Vault Agent, or a CI pipeline's secret store.
+
+**Calling a vault from inside the application** — needed only when nothing in front of the
+application can inject the value — is a change to one method,
+`DatabaseProviderSettings.GetConnectionString` in [`Data\DatabaseProvider.cs`](Data/DatabaseProvider.cs),
+because every caller already resolves through it. Two things to get right if you go that way:
+
+* **Cache the result.** `GetConnectionString` is called every time a context is constructed. Reading
+  an environment variable is an in-memory lookup; a vault call is a network round trip, so fetch once
+  at startup and hold it rather than calling per request.
+* **Fail clearly.** Decide up front whether an unreachable vault should stop the application or fall
+  back to `Web.config`, and log which one happened.
 
 ## 4. Create and seed the databases
 
