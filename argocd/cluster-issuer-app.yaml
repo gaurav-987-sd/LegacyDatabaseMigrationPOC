@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-issuer
+  namespace: argocd
+  annotations:
+    # Must sync after cert-manager (wave 0) so the ClusterIssuer CRD exists.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ilyas-kazi/LegacyDatabaseMigrationPOC.git 
+    targetRevision: main
+    path: cert-manager
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

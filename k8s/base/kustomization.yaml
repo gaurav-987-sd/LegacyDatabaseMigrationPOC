@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: legacydbmig
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - secretproviderclass.yaml
+  - deployment.yaml
+  - ingress.yaml
+images:
+  - name: acrlegacydbmigdevzj4r47.azurecr.io/legacydbmig-app
+    newTag: latest

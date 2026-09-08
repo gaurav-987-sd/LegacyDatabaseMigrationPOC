@@ -1,0 +1,74 @@
+# Deployment, not StatefulSet: the app's actual state lives in PostgreSQL,
+# not on the pod. Every pod is interchangeable, so replicas can be freely
+# added/removed/rescheduled and any pod can serve any request.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacydbmig-app
+  namespace: legacydbmig
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: legacydbmig-app
+  template:
+    metadata:
+      labels:
+        app: legacydbmig-app
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: legacydbmig-sa
+      nodeSelector:
+        kubernetes.io/os: windows
+      containers:
+        - name: legacydbmig-app
+          # kustomization.yaml's images/newTag override controls the tag deployed;
+          # the build-and-deploy.yml workflow rewrites it on every push.
+          image: acrlegacydbmigdevzj4r47.azurecr.io/legacydbmig-app:latest
+          ports:
+            - containerPort: 80
+          envFrom:
+            - secretRef:
+                name: legacydbmig-db-secrets
+          volumeMounts:
+            - name: kv-secrets
+              mountPath: "C:\\mnt\\secrets-store"
+              readOnly: true
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 40
+            periodSeconds: 20
+      volumes:
+        - name: kv-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: legacydbmig-kv
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: legacydbmig-app-svc
+  namespace: legacydbmig
+spec:
+  selector:
+    app: legacydbmig-app
+  ports:
+    - port: 80
+      targetPort: 80
