@@ -21,7 +21,13 @@ namespace LegacyDatabaseMigrationPOC.Migrations.SqlServer
             AutomaticMigrationsEnabled = false;
             MigrationsDirectory = @"Migrations\SqlServer";
             ContextKey = AppDbContext.MigrationsContextKey;
-            TargetDatabase = new DbConnectionInfo(DatabaseProviderSettings.SqlServerConnectionName);
+
+            // Resolved connection string plus explicit provider, so migrations follow the same
+            // environment-variable override as the application and never depend on the
+            // defaultConnectionFactory in Web.config to work out which provider to use.
+            TargetDatabase = new DbConnectionInfo(
+                DatabaseProviderSettings.GetConnectionString(DatabaseProvider.SqlServer),
+                DatabaseProviderSettings.GetProviderInvariantName(DatabaseProvider.SqlServer));
         }
 
         protected override void Seed(AppDbContext context)

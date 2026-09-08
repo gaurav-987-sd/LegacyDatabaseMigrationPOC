@@ -23,9 +23,11 @@ namespace LegacyDatabaseMigrationPOC.Controllers
 
         public ActionResult Current()
         {
+            var provider = DatabaseProviderSettings.Current;
+
             try
             {
-                using (var db = new AppDbContext())
+                using (var db = new AppDbContext(provider))
                 {
                     db.Database.Connection.Open();
 
@@ -34,8 +36,8 @@ namespace LegacyDatabaseMigrationPOC.Controllers
                     var serverVersion = db.Database.Connection.ServerVersion;
 
                     return Text(
-                        $"Configured Provider: {DatabaseProviderSettings.Current} (appSettings/{DatabaseProviderSettings.AppSettingKey}){NL}" +
-                        $"Connection String: {DatabaseProviderSettings.GetCurrentConnectionStringName()}{NL}" +
+                        $"Configured Provider: {provider} ({DatabaseProviderSettings.AppSettingKey}){NL}" +
+                        $"Connection String: {DatabaseProviderSettings.GetConnectionStringName(provider)} (from {SourceOf(provider)}){NL}" +
                         $"Database: {databaseName}{NL}" +
                         $"Connection Type: {connectionType}{NL}" +
                         $"Server Version: {serverVersion}");
@@ -95,8 +97,8 @@ namespace LegacyDatabaseMigrationPOC.Controllers
         public ActionResult Status()
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"Configured provider: {DatabaseProviderSettings.Current} (appSettings/{DatabaseProviderSettings.AppSettingKey})");
-            sb.AppendLine($"Auto-migrate on first use: {DatabaseProviderSettings.AutoMigrateEnabled} (appSettings/{DatabaseProviderSettings.AutoMigrateAppSettingKey})");
+            sb.AppendLine($"Configured provider: {DatabaseProviderSettings.Current} ({DatabaseProviderSettings.AppSettingKey})");
+            sb.AppendLine($"Auto-migrate on first use: {DatabaseProviderSettings.AutoMigrateEnabled} ({DatabaseProviderSettings.AutoMigrateAppSettingKey})");
             sb.AppendLine();
 
             foreach (var provider in DatabaseMigrator.AllProviders)
@@ -201,7 +203,7 @@ namespace LegacyDatabaseMigrationPOC.Controllers
             try
             {
                 var status = DatabaseMigrator.GetStatus(provider);
-                sb.AppendLine($"Connection string: {status.ConnectionStringName}");
+                sb.AppendLine($"Connection string: {status.ConnectionStringName} (from {SourceOf(provider)})");
                 sb.AppendLine($"Database exists:   {status.DatabaseExists}");
                 sb.AppendLine($"Up to date:        {status.IsUpToDate}");
                 sb.AppendLine($"Local migrations:  {Join(status.Local)}");
@@ -214,6 +216,17 @@ namespace LegacyDatabaseMigrationPOC.Controllers
             }
 
             sb.AppendLine();
+        }
+
+        /// <summary>
+        /// Where a provider's connection string came from. The connection string itself is never
+        /// shown, because it normally contains a password.
+        /// </summary>
+        private static string SourceOf(DatabaseProvider provider)
+        {
+            return DatabaseProviderSettings.IsOverriddenByEnvironment(provider)
+                ? "environment variable"
+                : "Web.config";
         }
 
         private static string Join(IEnumerable<string> values)

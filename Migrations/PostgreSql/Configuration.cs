@@ -21,7 +21,13 @@ namespace LegacyDatabaseMigrationPOC.Migrations.PostgreSql
             AutomaticMigrationsEnabled = false;
             MigrationsDirectory = @"Migrations\PostgreSql";
             ContextKey = AppDbContext.MigrationsContextKey;
-            TargetDatabase = new DbConnectionInfo(DatabaseProviderSettings.PostgreSqlConnectionName);
+
+            // Resolved connection string plus explicit provider, so migrations follow the same
+            // environment-variable override as the application and never depend on the
+            // defaultConnectionFactory in Web.config to work out which provider to use.
+            TargetDatabase = new DbConnectionInfo(
+                DatabaseProviderSettings.GetConnectionString(DatabaseProvider.PostgreSql),
+                DatabaseProviderSettings.GetProviderInvariantName(DatabaseProvider.PostgreSql));
         }
 
         protected override void Seed(AppDbContext context)

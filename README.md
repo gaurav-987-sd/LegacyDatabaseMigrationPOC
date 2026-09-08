@@ -79,6 +79,52 @@ local install) and the PostgreSQL `postgres` user both are.
 | `DatabaseProvider`    | `SqlServer` or `PostgreSql` | Which connection string the application uses.                                                                                                                                                         |
 | `AutoMigrateDatabase` | `true` or `false`           | `true`: the first time the application touches a database it creates it, applies the migrations and seeds it. `false`: the application never changes the schema; create the databases with section 4. |
 
+### 3.3 Overriding settings with environment variables (optional)
+
+For a local setup you can skip this section: with no variables set, everything comes from
+`Web.config` exactly as described above.
+
+Any of the four settings can instead come from an environment variable **of the same name**. This
+keeps passwords out of `Web.config` on a shared or deployed machine, and lets a build agent or
+container point the application at its own database without editing any file.
+
+| Variable              | Overrides                                         |
+| --------------------- | ------------------------------------------------- |
+| `DatabaseProvider`    | Which engine to use, `SqlServer` or `PostgreSql`. |
+| `AutoMigrateDatabase` | `true` or `false`.                                |
+| `SqlServerConnection` | The **whole** SQL Server connection string.       |
+| `PostgresConnection`  | The **whole** PostgreSQL connection string.       |
+
+Rules:
+
+* An environment variable always wins; `Web.config` is the fallback for anything not set.
+* Set the whole connection string, not one part of it. There is no merging with `Web.config`.
+* The override applies everywhere: the application, the migrations, the generated SQL scripts and
+  `Database\Setup-Database.ps1`. The application and the migration tooling can never end up pointing
+  at different databases.
+
+Set them for one PowerShell session (they are inherited by anything you start from it, including
+`Setup-Database.ps1` and IIS Express):
+
+```powershell
+$env:PostgresConnection = 'Host=db.example.com;Port=5432;Database=LegacyPoc;Username=appuser;Password=SecretHere'
+$env:DatabaseProvider   = 'PostgreSql'
+```
+
+Set them permanently for your user account (reopen the terminal afterwards):
+
+```powershell
+[Environment]::SetEnvironmentVariable('PostgresConnection', 'Host=...;Password=SecretHere', 'User')
+```
+
+For a site under full IIS, add them per application pool: **IIS Manager > Application Pools >
+your pool > Advanced Settings > Environment Variables**, then recycle the pool. A machine-wide
+variable also works, but IIS must be restarted to pick it up.
+
+To confirm which source is in use, open `/DatabaseTest/Current` or `/DatabaseTest/Status`: each
+provider is reported as coming from `Web.config` or from an `environment variable`. The connection
+string itself is never displayed, because it normally contains a password.
+
 ## 4. Create and seed the databases
 
 Pick one option. Each one creates the database if it is missing, creates the `dbo.Customers`
@@ -239,6 +285,7 @@ Nothing else changes. Both databases stay in place, so you can switch back and f
 | *Login failed for user* (SQL Server)                                                                  | The login has no access. Use a sysadmin login, or grant the login access to the database.                                                                                                                                                                                                |
 | PostgreSQL: *No connection could be made* or *connection refused*                                     | The PostgreSQL service is not running or listens on another port. Check **Services** for `postgresql-x64-<version>` and the `Port` value in the connection string.                                                                                                                       |
 | PostgreSQL: *password authentication failed for user "postgres"*                                      | Wrong `Password` in `PostgresConnection`.                                                                                                                                                                                                                                                |
+| The application ignores an edit to `Web.config`                                                       | An environment variable of the same name is overriding it (section 3.3). `/DatabaseTest/Current` names the source it used.                                                                                                                                                               |
 | PostgreSQL: *database "LegacyDatabaseMigrationPOC" does not exist* on `/DatabaseTest/Current`         | That page only opens a connection and does not create the database. Run section 4 first.                                                                                                                                                                                                 |
 | *Unable to update database to match the current model because there are pending changes*              | The model changed but a migration is missing for that provider. See "Adding a migration" in `Database/README.md`.                                                                                                                                                                        |
 | `Setup-Database.ps1`: *ef6.exe not found*                                                             | NuGet packages are not restored (section 2).                                                                                                                                                                                                                                             |
@@ -247,14 +294,15 @@ Nothing else changes. Both databases stay in place, so you can switch back and f
 
 ## 8. Where things are
 
-| Path                                              | What it is                                                            |
-| ------------------------------------------------- | --------------------------------------------------------------------- |
-| `Web.config`                                      | Connection strings, `DatabaseProvider`, `AutoMigrateDatabase`.        |
-| `Data\AppDbContext.cs`                            | The EF6 context. Picks the connection string from `DatabaseProvider`. |
-| `Data\DatabaseMigrator.cs`                        | Runs, reports and scripts migrations for either provider.             |
-| `Migrations\SqlServer\`, `Migrations\PostgreSql\` | One EF6 migration set per provider (they cannot be shared).           |
-| `Migrations\SeedData.cs`                          | The 10 sample customers, applied after every migration run.           |
-| `Controllers\DatabaseTestController.cs`           | The `/DatabaseTest/...` diagnostic pages.                             |
-| `Database\Setup-Database.ps1`                     | Command-line setup, SQL script generation, plain-SQL setup.           |
-| `Database\Scripts\`                               | Generated SQL for both engines plus seed scripts.                     |
-| `Database\README.md`                              | How the dual migrations work and how to add a new migration.          |
+| Path                                              | What it is                                                                                    |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `Web.config`                                      | Connection strings, `DatabaseProvider`, `AutoMigrateDatabase`.                                |
+| `Data\AppDbContext.cs`                            | The EF6 context. Picks the connection string from `DatabaseProvider`.                         |
+| `Data\DatabaseProvider.cs`                        | Resolves the engine and its connection string: environment variable first, Web.config second. |
+| `Data\DatabaseMigrator.cs`                        | Runs, reports and scripts migrations for either provider.                                     |
+| `Migrations\SqlServer\`, `Migrations\PostgreSql\` | One EF6 migration set per provider (they cannot be shared).                                   |
+| `Migrations\SeedData.cs`                          | The 10 sample customers, applied after every migration run.                                   |
+| `Controllers\DatabaseTestController.cs`           | The `/DatabaseTest/...` diagnostic pages.                                                     |
+| `Database\Setup-Database.ps1`                     | Command-line setup, SQL script generation, plain-SQL setup.                                   |
+| `Database\Scripts\`                               | Generated SQL for both engines plus seed scripts.                                             |
+| `Database\README.md`                              | How the dual migrations work and how to add a new migration.                                  |

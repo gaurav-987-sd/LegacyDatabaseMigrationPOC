@@ -71,10 +71,18 @@ if ($Provider -eq 'All') { $selected = @('SqlServer', 'PostgreSql') } else { $se
 # Connection string helpers
 # ---------------------------------------------------------------------------------------------
 
+# Environment variable first, Web.config second - the same precedence the application uses
+# (Data\DatabaseProvider.cs), so the script always targets the database the application would.
 function Get-ConnectionString([string]$name) {
+    $fromEnvironment = [Environment]::GetEnvironmentVariable($name)
+    if (-not [string]::IsNullOrWhiteSpace($fromEnvironment)) {
+        Write-Host "   using environment variable '$name'"
+        return $fromEnvironment
+    }
+
     [xml]$xml = Get-Content -LiteralPath $webConfig
     $node = $xml.configuration.connectionStrings.add | Where-Object { $_.name -eq $name }
-    if (-not $node) { throw "Connection string '$name' not found in $webConfig." }
+    if (-not $node) { throw "Connection string '$name' not found in the environment or in $webConfig." }
     return [string]$node.connectionString
 }
 

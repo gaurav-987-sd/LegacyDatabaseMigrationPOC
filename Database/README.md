@@ -22,6 +22,11 @@ migrated from this repository, and the active one is switched in `Web.config`.
   (`Data\DatabaseProvider.cs`). Any value other than `PostgreSql` means SQL Server.
 * Both EF providers are registered in the `entityFramework/providers` section, so no code
   changes are needed to switch.
+* Each setting can also come from an environment variable of the same name, which wins over
+  `Web.config`. Resolution happens in one place, `DatabaseProviderSettings`
+  (`Data\DatabaseProvider.cs`), and the context, the migrator, both migration configurations and
+  `Setup-Database.ps1` all go through it, so the application and the migration tooling always agree
+  on the target database. See section 3.3 of the [root README](../README.md).
 * `AutoMigrateDatabase=true` registers `MigrateToLatestVersionInitializer`
   (`App_Start\DatabaseConfig.cs`): the first time a context is used, the migrations of that
   connection's provider are applied and the seed runs. Set it to `false` to leave the schema alone
@@ -129,6 +134,15 @@ servers must be reachable when scaffolding.
 * **Manifest token.** The PostgreSQL snapshot records the server version it was scaffolded
   against (18.3). EF compares store types, not the token, so it applies to other supported
   PostgreSQL versions as well.
+* **Why the context has two constructors.** `AppDbContext(DatabaseProvider)` builds an explicit
+  `SqlConnection` or `NpgsqlConnection`; application code uses it. The parameterless constructor
+  connects by connection string *name* and exists for the EF migrations pipeline, which instantiates
+  the context itself and then swaps in the connection from `TargetDatabase` — something EF can only
+  do for a context created that way. Both migration configurations set `TargetDatabase` from the
+  resolved connection string plus an explicit provider invariant name, so an environment override
+  still reaches migrations. Handing a raw connection string to `DbContext(string)` is deliberately
+  avoided: EF would then build the connection with the `defaultConnectionFactory` from `Web.config`,
+  which is the Npgsql one, and a SQL Server connection string would be given to Npgsql and fail.
 * **Existing SQL Server databases** migrated before the split keep working: the configuration was
   moved but its `ContextKey` (`LegacyDatabaseMigrationPOC.Migrations.Configuration`) and the
   migration id (`202608190627453_InitialCreate`) are unchanged.

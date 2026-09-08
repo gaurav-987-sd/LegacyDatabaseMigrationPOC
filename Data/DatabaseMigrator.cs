@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data.Entity.Infrastructure;
 using System.Data.Entity.Migrations;
 using System.Data.Entity.Migrations.Infrastructure;
@@ -102,14 +101,16 @@ namespace LegacyDatabaseMigrationPOC.Data
             // marker. Scripting the pending migrations against a database name that does not exist
             // gives the same output: every migration is pending and nothing is applied or created.
             var configuration = GetConfiguration(provider);
-            configuration.TargetDatabase = new DbConnectionInfo(PostgreSqlScriptingConnectionString(), "Npgsql");
+            configuration.TargetDatabase = new DbConnectionInfo(
+                PostgreSqlScriptingConnectionString(),
+                DatabaseProviderSettings.GetProviderInvariantName(DatabaseProvider.PostgreSql));
             return new MigratorScriptingDecorator(new DbMigrator(configuration)).ScriptUpdate(null, null);
         }
 
         private static string PostgreSqlScriptingConnectionString()
         {
-            var settings = ConfigurationManager.ConnectionStrings[DatabaseProviderSettings.PostgreSqlConnectionName];
-            var builder = new NpgsqlConnectionStringBuilder(settings.ConnectionString);
+            var connectionString = DatabaseProviderSettings.GetConnectionString(DatabaseProvider.PostgreSql);
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
             builder.Database = builder.Database + "_ef6script";
             return builder.ConnectionString;
         }
