@@ -418,6 +418,11 @@ FodyWeavers.xsd
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform/envs/*/.terraform/
+
 # Local History for Visual Studio Code
 .history/
 
