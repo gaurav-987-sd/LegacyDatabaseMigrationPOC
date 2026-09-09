@@ -38,23 +38,6 @@ namespace LegacyDatabaseMigrationPOC.Data
         {
         }
 
-<<<<<<< HEAD
-=======
-        private static string ResolveConnectionString()
-        {
-            var provider = ConfigurationManager.AppSettings["DatabaseProvider"];
-            var envVarName = string.Equals(provider, "PostgreSql", StringComparison.OrdinalIgnoreCase)
-                ? "PostgresConnection"
-                : "AppDbConnection";
-            
-            var fromEnv = Environment.GetEnvironmentVariable(envVarName);
-            if (!string.IsNullOrEmpty(fromEnv))
-                return fromEnv;
-            
-            return envVarName;
-        }
-
->>>>>>> 995f143 (Read DB connection string from env var)
         public DbSet<Customer> Customers { get; set; }
 
         /// <summary>
