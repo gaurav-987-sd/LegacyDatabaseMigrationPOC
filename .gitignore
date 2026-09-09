@@ -11,6 +11,9 @@
 *.sln.docstates
 *.env
 
+# Local database credentials, copied from Database\set-local-env.example.ps1
+Database/set-local-env.ps1
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
