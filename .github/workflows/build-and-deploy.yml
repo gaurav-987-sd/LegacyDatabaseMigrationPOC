@@ -1,5 +1,9 @@
 name: Build and Deploy
 
+# Push to main touching app source -> build image, push to ACR, update the
+# image tag in k8s/base/kustomization.yaml, commit it back to main.
+# ArgoCD (already watching k8s/base/) picks up that commit and syncs
+# automatically -- this workflow never touches the cluster directly.
 on:
   push:
     branches: [main]
@@ -7,18 +11,26 @@ on:
       - "terraform/**"
       - "argocd/**"
       - "*.md"
+  workflow_dispatch: {}
 
 permissions:
+  id-token: write
   contents: write
+
+env:
+  IMAGE_NAME: legacydbmig-app
+  ACR_NAME: acrlegacydbmigdevzj4r47
 
 jobs:
   build-and-push:
-    # Uses ACR Tasks (az acr build) instead of a local Docker engine, so this
-    # can run on a plain self-hosted Windows runner with no Docker install
-    # required on the runner itself.
-    runs-on: [self-hosted, windows]
+    name: Build & push image
+    # Windows container image, requires a Windows Docker host to build.
+    # windows-latest GitHub-hosted runner has this -- no self-hosted runner
+    # needed.
+    runs-on: windows-latest
     outputs:
       image_tag: ${{ steps.tag.outputs.tag }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -34,22 +46,26 @@ jobs:
         shell: bash
         run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      # CHANGE-ME: set ACR_NAME as a repo variable (Settings > Secrets and
-      # variables > Actions > Variables) once you have it from
-      # `terraform output acr_name`.
-      - name: Build and push Windows image via ACR Tasks
-        shell: bash
+      - name: ACR login
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Docker build (Windows container)
         run: |
-          az acr build \
-            --registry ${{ vars.ACR_NAME }} \
-            --platform windows \
-            --image legacydbmig-app:${{ steps.tag.outputs.tag }} \
-            --image legacydbmig-app:latest \
+          docker build `
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }} `
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest `
             .
 
+      - name: Docker push
+        run: |
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
   update-manifest:
+    name: Update image tag for ArgoCD (${{ needs.build-and-push.outputs.image_tag }})
     needs: build-and-push
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,5 +81,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add k8s/base/kustomization.yaml
-          git commit -m "deploy: legacydbmig-app:${{ needs.build-and-push.outputs.image_tag }}" || echo "no changes to commit"
+          git commit -m "deploy: ${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}" || echo "no changes to commit"
           git push
