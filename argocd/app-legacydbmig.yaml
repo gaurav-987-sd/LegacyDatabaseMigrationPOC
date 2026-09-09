@@ -10,7 +10,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/ilyas-kazi/LegacyDatabaseMigrationPOC.git # CHANGE if this lives in a different repo
+    repoURL: https://github.com/gaurav-987-sd/LegacyDatabaseMigrationPOC.git # CHANGE if this lives in a different repo
     targetRevision: main
     path: k8s/base
   destination:

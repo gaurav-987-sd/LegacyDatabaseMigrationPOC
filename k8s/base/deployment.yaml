@@ -20,6 +20,11 @@ spec:
       serviceAccountName: legacydbmig-sa
       nodeSelector:
         kubernetes.io/os: windows
+      tolerations:
+        - key: "os"
+          operator: "Equal"
+          value: "windows"
+          effect: "NoSchedule"
       containers:
         - name: legacydbmig-app
           # kustomization.yaml's images/newTag override controls the tag deployed;
