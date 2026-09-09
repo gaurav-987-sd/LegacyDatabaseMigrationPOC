@@ -1,0 +1,32 @@
+# cert-manager is a normal Deployment (a few controller pods), NOT a
+# per-node DaemonSet. It watches Ingress resources cluster-wide (via the
+# cert-manager.io/cluster-issuer annotation) and issues/renews certs for
+# all of them automatically -- one install covers every service, no manual
+# cert install per deployment.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://charts.jetstack.io
+    chart: cert-manager
+    targetRevision: "v1.16.2"
+    helm:
+      values: |
+        installCRDs: true
+        nodeSelector:
+          kubernetes.io/os: linux
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

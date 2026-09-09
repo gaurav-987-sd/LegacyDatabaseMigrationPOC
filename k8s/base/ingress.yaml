@@ -1,0 +1,23 @@
+# cert-manager watches this Ingress (because of the annotation below) and
+# automatically requests + renews the TLS cert from Let's Encrypt, storing it
+# in the secretName below. No per-node daemon or manual cert install needed --
+# this is the one thing that replaces that whole idea.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: legacydbmig-app-ingress
+  namespace: legacydbmig
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: legacydbmig-app-svc
+                port:
+                  number: 80

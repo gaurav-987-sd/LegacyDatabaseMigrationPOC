@@ -1,0 +1,24 @@
+# Apply this once, manually, into the cluster ArgoCD runs on:
+#   kubectl apply -f argocd/app-legacydbmig.yaml
+# After that, ArgoCD watches k8s/base/ in this repo and auto-syncs on every
+# commit -- including the ones build-and-deploy.yml pushes automatically.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: legacydbmig-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ilyas-kazi/LegacyDatabaseMigrationPOC.git # CHANGE if this lives in a different repo
+    targetRevision: main
+    path: k8s/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: legacydbmig
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,23 @@
+project     = "legacydbmig"
+environment = "dev"
+location    = "eastus"
+
+app_service_sku      = "B1"
+acr_sku              = "Basic"
+aks_sku_tier         = "Free"
+aks_node_count       = 1
+aks_vm_size          = "Standard_B2s"
+enable_windows_node_pool = false
+sql_admin_login      = "sqladmin"
+postgres_admin_login = "pgadmin"
+
+# Add your workstation's public IP here to reach the databases directly for testing.
+allowed_client_ips = {
+  # "my-laptop" = "203.0.113.10"
+}
+
+tags = {
+  Project = "LegacyDatabaseMigrationPOC"
+  Purpose = "MSSQL-to-PostgreSQL-migration-poc"
+  Owner   = "your-name"
+}
