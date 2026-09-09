@@ -1,4 +1,4 @@
-﻿namespace LegacyDatabaseMigrationPOC.Migrations
+﻿namespace LegacyDatabaseMigrationPOC.Migrations.SqlServer
 {
     using System;
     using System.Data.Entity.Migrations;

@@ -160,19 +160,29 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App_Start\BundleConfig.cs" />
+    <Compile Include="App_Start\DatabaseConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="Controllers\DatabaseTestController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Data\AppDbContext.cs" />
+    <Compile Include="Data\DatabaseMigrator.cs" />
+    <Compile Include="Data\DatabaseProvider.cs" />
+    <Compile Include="Data\MigrateToLatestVersionInitializer.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Migrations\202608190627453_InitialCreate.cs" />
-    <Compile Include="Migrations\202608190627453_InitialCreate.Designer.cs">
+    <Compile Include="Migrations\SqlServer\202608190627453_InitialCreate.cs" />
+    <Compile Include="Migrations\SqlServer\202608190627453_InitialCreate.Designer.cs">
       <DependentUpon>202608190627453_InitialCreate.cs</DependentUpon>
     </Compile>
-    <Compile Include="Migrations\Configuration.cs" />
+    <Compile Include="Migrations\PostgreSql\202609071103352_InitialCreate.cs" />
+    <Compile Include="Migrations\PostgreSql\202609071103352_InitialCreate.Designer.cs">
+      <DependentUpon>202609071103352_InitialCreate.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\PostgreSql\Configuration.cs" />
+    <Compile Include="Migrations\SeedData.cs" />
+    <Compile Include="Migrations\SqlServer\Configuration.cs" />
     <Compile Include="Models\Customer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -230,6 +240,14 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
+    <None Include="README.md" />
+    <None Include="Database\README.md" />
+    <None Include="Database\set-local-env.example.ps1" />
+    <None Include="Database\Setup-Database.ps1" />
+    <None Include="Database\Scripts\PostgreSql\Migrations.sql" />
+    <None Include="Database\Scripts\PostgreSql\SeedData.sql" />
+    <None Include="Database\Scripts\SqlServer\Migrations.sql" />
+    <None Include="Database\Scripts\SqlServer\SeedData.sql" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap.rtl.min.css.map" />
@@ -259,7 +277,10 @@
     <Content Include="Scripts\jquery-3.7.0.min.map" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Migrations\202608190627453_InitialCreate.resx">
+    <EmbeddedResource Include="Migrations\PostgreSql\202609071103352_InitialCreate.resx">
+      <DependentUpon>202609071103352_InitialCreate.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\SqlServer\202608190627453_InitialCreate.resx">
       <DependentUpon>202608190627453_InitialCreate.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
