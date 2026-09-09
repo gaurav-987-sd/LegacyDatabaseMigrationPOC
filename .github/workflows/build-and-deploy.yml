@@ -33,7 +33,23 @@ jobs:
       image_tag: ${{ steps.tag.outputs.tag }}
 
     steps:
+      - name: Checkout code
       - uses: actions/checkout@v4
+
+      - name: Narrow diagnostic
+        shell: pwsh
+        run: |
+          Write-Host "PATH:"; $env:PATH
+          Get-Command docker -ErrorAction SilentlyContinue
+          Get-Service *docker* -ErrorAction SilentlyContinue
+
+      # If diagnostic shows Docker missing, add install step here
+      - name: Install Docker via Chocolatey
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install docker-desktop -y --no-progress
+          docker version
 
       - name: Azure login
         uses: azure/login@v2
