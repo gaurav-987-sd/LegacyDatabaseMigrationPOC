@@ -3,7 +3,8 @@ FROM mcr.microsoft.com/dotnet/framework/sdk:4.8-windowsservercore-ltsc2022 AS bu
 WORKDIR C:\src
 COPY . .
 RUN nuget restore LegacyDatabaseMigrationPOC.sln
-RUN msbuild LegacyDatabaseMigrationPOC\LegacyDatabaseMigrationPOC.csproj /p:Configuration=Release /p:DeployOnBuild=true /p:WebPublishMethod=FileSystem /p:publishUrl=C:\publish /p:VisualStudioVersion=17.0
+RUN dir C:\src
+RUN msbuild LegacyDatabaseMigrationPOC.csproj /p:Configuration=Release /p:DeployOnBuild=true /p:WebPublishMethod=FileSystem /p:publishUrl=C:\publish /p:VisualStudioVersion=17.0
 
 FROM mcr.microsoft.com/dotnet/framework/aspnet:4.8-windowsservercore-ltsc2022
 WORKDIR C:\inetpub\wwwroot
