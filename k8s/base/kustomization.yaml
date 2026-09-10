@@ -9,4 +9,4 @@ resources:
   - ingress.yaml
 images:
   - name: acrlegacydbmigdevzj4r47.azurecr.io/legacydbmig-app
-    newTag: b6a01e7
+    newTag: e72cfee
